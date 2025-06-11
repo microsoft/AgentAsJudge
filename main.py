@@ -1,7 +1,7 @@
 import argparse
 import json
 from dotenv import find_dotenv, load_dotenv
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, InteractiveBrowserCredential
 
 from metrics.base_agentic_quality_metric import BaseAgenticQualityMetric
 from metrics.agent_eval_prompts import AgentEvalPrompts
@@ -18,36 +18,55 @@ def load_samples(jsonl_path):
 def evaluate(samples, credential):
     print("📝 Starting evaluation of samples...\n")
 
-    with open(r"agent_eval_prompts/multiple_choice/reviewer_agent_system_prompt.md") as f:
+    with open(r"agent_eval_prompts/introduction/reviewer_agent_system_prompt.md") as f:
         reviewer_prompt = f.read()
 
-    with open(r"agent_eval_prompts/multiple_choice/critic_agent_system_prompt.md") as f:
+    with open(r"agent_eval_prompts/introduction/critic_agent_system_prompt.md") as f:
         critic_prompt = f.read()
 
-    with open(r"agent_eval_prompts/multiple_choice/ranker_agent_system_prompt.md") as f:
+    with open(r"agent_eval_prompts/introduction/ranker_agent_system_prompt.md") as f:
         ranker_prompt = f.read()
 
+    with open(r"agent_eval_prompts/introduction/shared_quality_metrics.md") as f:
+        shared_quality_metrics = f.read()
+
     agent_eval_prompts = AgentEvalPrompts(
-        reviewer_prompt=reviewer_prompt,
-        critic_prompt=critic_prompt,
-        ranker_prompt=ranker_prompt
+        _shared_quality_metrics=shared_quality_metrics,
+        _critic_prompt=critic_prompt,
+        _reviewer_prompt=reviewer_prompt,
+        _ranker_prompt=ranker_prompt
     )
 
     evaluation_metric = BaseAgenticQualityMetric(
         name="AgenticQualityMetric",
         agent_eval_prompts=agent_eval_prompts,
-        credential=credential
+        credential=InteractiveBrowserCredential()
     )
 
     for idx, sample in enumerate(samples):
         print(f"🔍 Evaluating Sample {idx + 1}...")
         try:
-            result = evaluation_metric.measure(str(sample))
+            file_id = sample["fileMetadata"]["sourceFilePath"]
+            intro = [intro_slide_generated_object["generatedContent"] for intro_slide_generated_object in
+                     sample["slides"][0]["generatedObjects"] if
+                     intro_slide_generated_object["status"] == "Success" and intro_slide_generated_object[
+                         "type"] == "Intro"][0]
+            summary = sample["fileMetadata"]["rawExtractiveSummaries"]
+            result = evaluation_metric.measure(str(
+                {
+                    "intro": intro,
+                    "summary": summary,
+                }
+            ))
             for r in result:
-                print(f"📊 Score: {r.score}")
-                print(f"🗣 Review: {r.reason}")
+                print(f"\t\t\t📊 Score: {r.score}")
+                print(f"\t\t\t🗣 Review: {r.reason}")
+            print("-"* 40)
+            with open("original_intros_evaluation_results.jsonl", "a", encoding="utf-8") as output_file:
+                output_file.write(json.dumps({"file_id": file_id, "intro": intro, "summary": summary, "result": [json.dumps(r.__dict__) for r in result]}, ensure_ascii=False) + "\n")
         except Exception as e:
             print(f"❌ Error evaluating sample {idx + 1}: {e}\n")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Validate JSONL structure and Azure env variables, then evaluate.")

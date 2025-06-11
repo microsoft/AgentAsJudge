@@ -3,7 +3,7 @@ import os
 import sys
 
 def validate_env_variables():
-    required_vars = ["AZURE_DEPLOYMENT", "MODEL_NAME", "AZURE_ENDPOINT", "API_TOKEN"]
+    required_vars = ["AZURE_DEPLOYMENT", "MODEL_NAME", "AZURE_ENDPOINT",]
     missing_vars = [var for var in required_vars if os.getenv(var) is None]
 
     if missing_vars:
@@ -17,7 +17,6 @@ def validate_env_variables():
         "model": os.getenv("MODEL_NAME"),
         "api_version": "2024-12-01-preview",
         "azure_endpoint": os.getenv("AZURE_ENDPOINT"),
-        "api_token": os.getenv("API_TOKEN")
     }
 
 def validate_jsonl(file_path):

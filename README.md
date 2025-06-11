@@ -54,7 +54,7 @@ This project evaluates the agentic quality of text samples using a multi-agent r
      )
      ```
 
-4. **Run Evaluation**:
+4**Run Evaluation**:
    Execute the script:
    ```bash
    python main.py <path-to-jsonl-file>

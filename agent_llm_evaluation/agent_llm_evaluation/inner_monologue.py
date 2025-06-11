@@ -8,6 +8,7 @@ from autogen_agentchat.messages import TextMessage
 from autogen_agentchat.teams import RoundRobinGroupChat
 from autogen_ext.models.openai import AzureOpenAIChatCompletionClient
 from azure.core.credentials import TokenCredential
+from azure.identity.aio import DefaultAzureCredential, get_bearer_token_provider
 
 from metrics.agent_eval_prompts import AgentEvalPrompts
 
@@ -25,7 +26,7 @@ class InnerMonologue:
       - overall_feedbacks: list of user feedback entries.
     """
 
-    def __init__(self, azure_deployment: str, model_name:str, azure_endpoint:str, api_token:str,
+    def __init__(self, azure_deployment: str, model_name:str, azure_endpoint:str, credential:DefaultAzureCredential,
                  agent_eval_prompts: AgentEvalPrompts) -> None:
         self.model_client = AzureOpenAIChatCompletionClient(
             azure_deployment=azure_deployment,
@@ -33,18 +34,18 @@ class InnerMonologue:
             api_version="2024-12-01-preview",
             azure_endpoint=azure_endpoint,
             temperature=0.5,
-            api_key=api_token
+            azure_ad_token_provider=get_bearer_token_provider(credential, "https://cognitiveservices.azure.com/.default"),
         )
         self.messages: list[TextMessage | TaskResult] = []
         self.overall_feedbacks: list[dict[str, str | int]] = []
         self.termination_token = "TERMINATE"
 
         # Prompts
-        reviewer_agent_system_prompt = agent_eval_prompts.reviewer_prompt
+        reviewer_agent_system_prompt = agent_eval_prompts.get_reviewer_prompt()
 
-        critic_agent_system_prompt = agent_eval_prompts.critic_prompt
+        critic_agent_system_prompt = agent_eval_prompts.get_critic_prompt()
 
-        ranker_agent_system_prompt = agent_eval_prompts.ranker_prompt
+        ranker_agent_system_prompt = agent_eval_prompts.get_ranker_prompt()
 
         # Discussion agent
         self.discussion_agent = AssistantAgent(
