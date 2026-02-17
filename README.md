@@ -42,22 +42,28 @@ This project evaluates the agentic quality of text samples using a multi-agent r
    API_TOKEN=<your-api-token>
    ```
 
-3. **Change System Prompts**:
-   To customize the system prompts:
-   - Create a new directory under `metrics` and add your prompt files (e.g., `.md` files).
-   - Update the initialization of the `AgentEvalPrompts` object in `main.py` with the paths to your new prompt files:
-     ```python
-     agent_eval_prompts = AgentEvalPrompts(
-         reviewer_prompt="<path-to-your-reviewer-prompt>",
-         critic_prompt="<path-to-your-critic-prompt>",
-         ranker_prompt="<path-to-your-ranker-prompt>"
-     )
-     ```
+3. **Choose a Task Type**:
+   The evaluation task type determines which prompts and input schema are used.
+   Supported task types:
+   - `introduction` — Evaluates introduction slides for learning activities.
+   - `summary` — Evaluates the quality of text summaries against source material.
+
+   To add a new task type, create a directory under `agent_eval_prompts/` with:
+   - `reviewer_agent_system_prompt.md`
+   - `critic_agent_system_prompt.md`
+   - `ranker_agent_system_prompt.md`
+   - `shared_quality_metrics.md`
 
 4. **Run Evaluation**:
-   Execute the script:
    ```bash
+   # Evaluate introduction slides (default)
    python main.py <path-to-jsonl-file>
+
+   # Evaluate summaries
+   python main.py <path-to-jsonl-file> --task-type summary
+
+   # Custom output file
+   python main.py <path-to-jsonl-file> --task-type summary --output-file my_results.jsonl
    ```
 
 ---
@@ -91,6 +97,26 @@ This project evaluates the agentic quality of text samples using a multi-agent r
    ```
    ❌ Error evaluating sample X: <error-description>
    ```
+
+---
+
+## Input Schema by Task Type
+
+### `introduction`
+Each JSON line must contain:
+- `fileMetadata.sourceFilePath` — Path to the source file.
+- `fileMetadata.rawExtractiveSummaries` — Extractive summaries of the learning material.
+- `slides[0].generatedObjects[]` — Must contain an object with `status: "Success"`, `type: "Intro"`, and `generatedContent`.
+
+### `summary`
+Each JSON line must contain:
+- `source_material` (or `source` / `context`) — The original text.
+- `summary` (or `generated_summary`) — The generated summary to evaluate.
+
+Example:
+```json
+{"source_material": "The mitochondria is the powerhouse of the cell...", "summary": "Mitochondria generate cellular energy."}
+```
 
 ---
 
